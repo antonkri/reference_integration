@@ -26,6 +26,7 @@ on:
     types: [checks_requested]
   release:
     types: [created]
+  workflow_dispatch: # Allows manual runs, e.g. to test workflow changes on a branch/fork before merge
 # Do not flood CI with unneeded previous runs in PR
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
@@ -82,7 +83,8 @@ jobs:
           rm -rf _build/
       - name: Execute Unit Tests with Coverage Analysis
         run: |
-          python ./scripts/quality_runners.py
+          python ./scripts/quality_runners.py \
+            ${{ github.event_name != 'push' && '--trust-cache' || '' }}
       - name: Execute Feature Integration Tests
         run: |
           bazel test --config=linux-x86_64 //feature_integration_tests/test_cases:fit
