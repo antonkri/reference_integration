@@ -38,16 +38,17 @@ jobs:
           disk-cache: coverage-cache-repro
           repository-cache: true
           cache-save: false
-      - name: Run bazel coverage TWICE for score_kyron (repro)
+      - name: Run bazel coverage TWICE for score_kyron (repro, variant 2)
         run: |
-          echo "##[group]=== RUN 1 ==="
+          echo "##[group]=== RUN 1 (--nocache_test_results, simulates 'push' event) ==="
           bazel coverage --test_verbose_timeout_warnings --test_timeout=1200 \
             --config=unit-tests --config=ferrocene-coverage \
             --test_summary=testcase --test_output=errors \
+            --nocache_test_results \
             --instrumentation_filter=@score_kyron \
             @score_kyron//src/...
           echo "##[endgroup]"
-          echo "##[group]=== RUN 2 (same job, same disk-cache, no source changes) ==="
+          echo "##[group]=== RUN 2 (no flag, default auto caching, same disk-cache) ==="
           bazel coverage --test_verbose_timeout_warnings --test_timeout=1200 \
             --config=unit-tests --config=ferrocene-coverage \
             --test_summary=testcase --test_output=errors \
