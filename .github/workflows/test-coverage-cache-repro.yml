@@ -38,7 +38,7 @@ jobs:
           disk-cache: coverage-cache-repro
           repository-cache: true
           cache-save: false
-      - name: Run bazel coverage TWICE for score_kyron (repro, variant 3: fresh server)
+      - name: "Run bazel coverage TWICE for score_kyron (repro, variant 3: fresh server)"
         run: |
           echo "##[group]=== RUN 1 ==="
           bazel coverage --test_verbose_timeout_warnings --test_timeout=1200 \
