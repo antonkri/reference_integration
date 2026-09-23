@@ -12,10 +12,26 @@
 # *******************************************************************************
 #
 # DISPOSABLE DEBUG WORKFLOW - not for merging into main.
-# Purpose: variant 5 - does a REAL GitHub Actions cache round-trip (tar upload
-# in one job/runner, tar download in a completely separate job/runner) preserve
-# disk-cache fidelity for bazel coverage test actions, the way a plain
-# `bazel shutdown` within the same job/runner does?
+#
+# Purpose: variant 6 - reproduce the EXACT production event split:
+#
+#   * push on main -> quality_runners.py omits --trust-cache, so it passes
+#                     --nocache_test_results; AND this is the only event for
+#                     which setup-bazel has cache-save: true.
+#   * pull_request -> quality_runners.py passes --trust-cache (no
+#                     --nocache_test_results); cache-save is false.
+#
+# So the only runs that WRITE the shared disk-cache are exactly the runs that
+# were told not to cache test results. Question under test: does
+# --nocache_test_results suppress the WRITE of test results into the disk-cache,
+# leaving every later PR run with a cache full of build artifacts but with zero
+# test results?
+#
+# Control group is variant 5 (identical setup, save job WITHOUT the flag), whose
+# restore job reported "Executed 0 out of 3 tests".
+#
+# Expected if hypothesis TRUE : restore job reports "Executed 3 out of 3 tests"
+# Expected if hypothesis FALSE: restore job reports "Executed 0 out of 3 tests"
 name: "[debug] Coverage cache repro"
 on:
   workflow_dispatch:
@@ -33,14 +49,15 @@ jobs:
         uses: bazel-contrib/setup-bazel@0.18.0
         with:
           bazelisk-cache: true
-          disk-cache: coverage-cache-repro-v5
+          disk-cache: coverage-cache-repro-v6
           repository-cache: true
           cache-save: true
-      - name: "RUN 1: score_kyron (fresh, this job SAVES the disk-cache to GH Actions cache)"
+      - name: "RUN 1: score_kyron WITH --nocache_test_results (mimics a push run); this job SAVES the disk-cache"
         run: |
           bazel coverage --test_verbose_timeout_warnings --test_timeout=1200 \
             --config=unit-tests --config=ferrocene-coverage \
             --test_summary=testcase --test_output=errors \
+            --nocache_test_results \
             --instrumentation_filter=@score_kyron \
             @score_kyron//src/...
   restore:
@@ -57,10 +74,10 @@ jobs:
         uses: bazel-contrib/setup-bazel@0.18.0
         with:
           bazelisk-cache: true
-          disk-cache: coverage-cache-repro-v5
+          disk-cache: coverage-cache-repro-v6
           repository-cache: true
           cache-save: false
-      - name: "RUN 2: score_kyron AGAIN, IDENTICAL flags, but on a completely separate runner/VM"
+      - name: "RUN 2: score_kyron WITHOUT the flag (mimics a PR run with --trust-cache), separate runner/VM"
         run: |
           bazel coverage --test_verbose_timeout_warnings --test_timeout=1200 \
             --config=unit-tests --config=ferrocene-coverage \
