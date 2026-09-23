@@ -38,19 +38,33 @@ jobs:
           disk-cache: coverage-cache-repro
           repository-cache: true
           cache-save: false
-      - name: "Run bazel coverage TWICE for score_kyron (repro, variant 3: fresh server)"
+      - name: "Run bazel coverage: variant 4 - does switching --instrumentation_filter between modules invalidate cache?"
         run: |
-          echo "##[group]=== RUN 1 ==="
+          echo "##[group]=== RUN A: score_kyron (fresh) ==="
           bazel coverage --test_verbose_timeout_warnings --test_timeout=1200 \
             --config=unit-tests --config=ferrocene-coverage \
             --test_summary=testcase --test_output=errors \
             --instrumentation_filter=@score_kyron \
             @score_kyron//src/...
           echo "##[endgroup]"
-          echo "##[group]=== bazel shutdown (force a brand-new server for RUN 2, disk-cache dir untouched) ==="
+          echo "##[group]=== RUN B: score_persistency (different instrumentation_filter + extra flags) ==="
+          bazel coverage --test_verbose_timeout_warnings --test_timeout=1200 \
+            --config=unit-tests --config=ferrocene-coverage \
+            --test_summary=testcase --test_output=errors \
+            --instrumentation_filter=@score_persistency \
+            @score_persistency//score/kvs/... \
+            --@score_baselibs//score/log_rust:safety_level=qm \
+            --@score_baselibs//score/json:base_library=nlohmann \
+            --@score_logging//score/mw/log/flags:KRemote_Logging=False \
+            -- \
+            -@score_persistency//score/kvs/tests:bm_kvs_cpp \
+            -@score_persistency//score/kvs/tests/integration_test_scenarios/... \
+            -@score_persistency//score/kvs/tests/test_cases/...
+          echo "##[endgroup]"
+          echo "##[group]=== bazel shutdown (force a brand-new server) ==="
           bazel shutdown
           echo "##[endgroup]"
-          echo "##[group]=== RUN 2 (fresh bazel server, same disk-cache dir on disk, no source changes) ==="
+          echo "##[group]=== RUN C: score_kyron AGAIN (identical flags to RUN A, fresh server, same disk-cache) ==="
           bazel coverage --test_verbose_timeout_warnings --test_timeout=1200 \
             --config=unit-tests --config=ferrocene-coverage \
             --test_summary=testcase --test_output=errors \
