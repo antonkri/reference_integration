@@ -90,3 +90,4 @@ git_override(
 bazel_dep(name = "score_sbom", version = "0.0.2")
 
 include("//bazel_common:score_sbom.MODULE.bazel")
+# cache-fallback-probe (no functional change)
